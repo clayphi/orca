@@ -3,6 +3,7 @@ import { OrcaRuntimeWithHasLiveOrPersistedServeOrSshOwnedPtyBinding } from '../s
 import type { RuntimePtyWorktreeRecord } from '../runtime-terminal-state-records'
 import { normalizeCompatibleAgentTitleForOwner } from '../../../shared/agent-title-owner'
 import { getLatestPtyTitle } from '../runtime-worktree-status-projection'
+import { tabCustomTitle } from './saved-tab-custom-title'
 import type {
   RuntimeMobileSessionTabsSnapshot,
   RuntimeMobileSessionTerminalTab
@@ -93,16 +94,22 @@ export abstract class OrcaRuntimeWithPublishPtyBackedMobileSessionTerminal exten
           candidate.parentTabId === args.tabId &&
           candidate.viewMode !== undefined
       )?.viewMode
-    // Republished tabs retain manual names; new split leaves inherit them.
-    const customTitle = (
-      existingTab ??
-      existing?.tabs.find(
-        (candidate): candidate is RuntimeMobileSessionTerminalTab =>
-          candidate.type === 'terminal' &&
-          candidate.parentTabId === args.tabId &&
-          candidate.customTitle !== undefined
-      )
-    )?.customTitle
+    // Republished tabs retain manual names; new split leaves inherit them. A terminal restarted
+    // for a saved tab has no earlier surface, so it falls back to the tab's saved name.
+    const customTitle = tabCustomTitle(
+      (
+        existingTab ??
+        existing?.tabs.find(
+          (candidate): candidate is RuntimeMobileSessionTerminalTab =>
+            candidate.type === 'terminal' &&
+            candidate.parentTabId === args.tabId &&
+            candidate.customTitle !== undefined
+        )
+      )?.customTitle,
+      this.getWorkspaceSessionForWorktree(worktreeId),
+      worktreeId,
+      args.tabId
+    )
     const tab: RuntimeMobileSessionTerminalTab = {
       type: 'terminal',
       id: `${args.tabId}::${args.leafId}`,
