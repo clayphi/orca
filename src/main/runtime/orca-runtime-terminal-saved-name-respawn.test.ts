@@ -110,4 +110,30 @@ describe('a saved tab name after its terminal is restarted', () => {
       customTitle: 'Saved name'
     })
   })
+
+  it('keeps a name cleared on the phone row cleared when the terminal restarts', async () => {
+    const runtime = runtimeWithSession('Saved name')
+    runtime.setNotifier(notifier())
+    runtime.setPtyController(controller('client-restarted-pty'))
+    const identity = { tabId: 'host-tab', leafId: HEADLESS_LEAF_ID }
+    await runtime['createRuntimeOwnedMobileSessionTerminal'](TEST_WORKTREE_ID, true, undefined, {
+      identity
+    })
+    // A desktop clear reaches the row before its debounced session write drops the old name.
+    const snapshot = runtime['mobileSessionTabsByWorktree'].get(TEST_WORKTREE_ID)!
+    runtime['mobileSessionTabsByWorktree'].set(TEST_WORKTREE_ID, {
+      ...snapshot,
+      tabs: snapshot.tabs.map((tab) =>
+        tab.type === 'terminal' && tab.parentTabId === 'host-tab'
+          ? { ...tab, customTitle: null }
+          : tab
+      )
+    })
+
+    await runtime['createRuntimeOwnedMobileSessionTerminal'](TEST_WORKTREE_ID, true, undefined, {
+      identity
+    })
+
+    expect((await phoneSurface(runtime))?.customTitle).toBeNull()
+  })
 })
