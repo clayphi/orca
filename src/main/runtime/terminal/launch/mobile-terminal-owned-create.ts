@@ -13,7 +13,7 @@ import { deriveRemoteRuntimeTerminalCreateHandle } from '../../remote-runtime-te
 import { parsePaneKey } from '../../../../shared/stable-pane-id'
 import { placeCreatedSessionTab } from '../../../../shared/session-tab-placement'
 import { insertTabIdIntoOrder } from '../../../../shared/workspace-layout/tab-order'
-import { tabCustomTitle } from '../../session-tabs/saved-tab-custom-title'
+import type { OrcaRuntimeWithBuildPtyTerminalSummary as PtyTerminalSummaryMethods } from '../query/pty-terminal-summary'
 import {
   buildHeadlessMobileSessionTabGroups,
   buildMaterializedHeadlessParentLayout,
@@ -23,6 +23,10 @@ import {
 const OWNED_MOBILE_DISPATCH_RECIPE_TTL_MS = 15 * 60_000
 
 export abstract class OrcaRuntimeWithCreateRuntimeOwnedMobileSessionTerminal extends OrcaRuntimeWithResolveMobileSessionTerminalCommand {
+  protected abstract getPtyManualTitle(
+    ...args: Parameters<PtyTerminalSummaryMethods['getPtyManualTitle']>
+  ): ReturnType<PtyTerminalSummaryMethods['getPtyManualTitle']>
+
   private readonly ownedMobileDispatchRecipes = new Map<
     string,
     {
@@ -192,9 +196,9 @@ export abstract class OrcaRuntimeWithCreateRuntimeOwnedMobileSessionTerminal ext
       livePty.pty.ptyId,
       existingSurface?.parentLayout
     )
-    // A saved tab's terminal restarted after a restart keeps the tab's name on mobile.
-    const saved = this.getWorkspaceSessionForWorktree(worktreeId)
-    const customTitle = tabCustomTitle(existingSurface?.customTitle, saved, worktreeId, parentTabId)
+    // A terminal restarted for a saved tab keeps the tab's saved name.
+    const customTitle =
+      existingSurface?.customTitle ?? (this.getPtyManualTitle(livePty.pty, false) || undefined)
     const tab: RuntimeMobileSessionTerminalTab = {
       type: 'terminal',
       id: `${parentTabId}::${leafId}`,

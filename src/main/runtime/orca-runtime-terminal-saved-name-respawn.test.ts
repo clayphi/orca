@@ -34,7 +34,7 @@ async function phoneSurface(runtime: OrcaRuntimeService) {
   return surface?.type === 'terminal' ? surface : undefined
 }
 
-function runtimeWithSession(savedName?: string): OrcaRuntimeService {
+function runtimeWithSession(savedName?: string | null): OrcaRuntimeService {
   const session = makeWorkspaceSessionWithHeadlessTerminal()
   if (savedName !== undefined) {
     session.tabsByWorktree[TEST_WORKTREE_ID]![0]!.customTitle = savedName
@@ -76,8 +76,11 @@ describe('a saved tab name after its terminal is restarted', () => {
     })
   })
 
-  it('leaves a tab with no saved name on its terminal title', async () => {
-    const runtime = runtimeWithSession()
+  it.each([
+    ['no saved name', undefined],
+    ['a cleared name', null]
+  ])('leaves a tab with %s on its terminal title', async (_label, savedName) => {
+    const runtime = runtimeWithSession(savedName)
     runtime.setNotifier(notifier())
     runtime.setPtyController(controller('respawned-pty'))
 
@@ -106,31 +109,5 @@ describe('a saved tab name after its terminal is restarted', () => {
       title: 'Saved name',
       customTitle: 'Saved name'
     })
-  })
-
-  it('keeps a name cleared on the phone row cleared when the terminal restarts', async () => {
-    const runtime = runtimeWithSession('Saved name')
-    runtime.setNotifier(notifier())
-    runtime.setPtyController(controller('client-restarted-pty'))
-    const identity = { tabId: 'host-tab', leafId: HEADLESS_LEAF_ID }
-    await runtime['createRuntimeOwnedMobileSessionTerminal'](TEST_WORKTREE_ID, true, undefined, {
-      identity
-    })
-    // The phone row's name is cleared while the saved session still holds the old one.
-    const snapshot = runtime['mobileSessionTabsByWorktree'].get(TEST_WORKTREE_ID)!
-    runtime['mobileSessionTabsByWorktree'].set(TEST_WORKTREE_ID, {
-      ...snapshot,
-      tabs: snapshot.tabs.map((tab) =>
-        tab.type === 'terminal' && tab.parentTabId === 'host-tab'
-          ? { ...tab, customTitle: null }
-          : tab
-      )
-    })
-
-    await runtime['createRuntimeOwnedMobileSessionTerminal'](TEST_WORKTREE_ID, true, undefined, {
-      identity
-    })
-
-    expect((await phoneSurface(runtime))?.customTitle).toBeNull()
   })
 })

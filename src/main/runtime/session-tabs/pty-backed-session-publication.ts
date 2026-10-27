@@ -3,7 +3,7 @@ import { OrcaRuntimeWithHasLiveOrPersistedServeOrSshOwnedPtyBinding } from '../s
 import type { RuntimePtyWorktreeRecord } from '../runtime-terminal-state-records'
 import { normalizeCompatibleAgentTitleForOwner } from '../../../shared/agent-title-owner'
 import { getLatestPtyTitle } from '../runtime-worktree-status-projection'
-import { tabCustomTitle } from './saved-tab-custom-title'
+import type { OrcaRuntimeWithBuildPtyTerminalSummary as PtyTerminalSummaryMethods } from '../terminal/query/pty-terminal-summary'
 import type {
   RuntimeMobileSessionTabsSnapshot,
   RuntimeMobileSessionTerminalTab
@@ -20,6 +20,9 @@ import {
 
 export abstract class OrcaRuntimeWithPublishPtyBackedMobileSessionTerminal extends OrcaRuntimeWithHasLiveOrPersistedServeOrSshOwnedPtyBinding {
   protected abstract markPaneLiveTitlesDirty(): void
+  protected abstract getPtyManualTitle(
+    ...args: Parameters<PtyTerminalSummaryMethods['getPtyManualTitle']>
+  ): ReturnType<PtyTerminalSummaryMethods['getPtyManualTitle']>
   protected abstract isMobileSessionSurfaceMembershipAllowed(
     ...args: Parameters<
       TouchMobileSessionTabsForWorktreeMethods['isMobileSessionSurfaceMembershipAllowed']
@@ -94,9 +97,8 @@ export abstract class OrcaRuntimeWithPublishPtyBackedMobileSessionTerminal exten
           candidate.parentTabId === args.tabId &&
           candidate.viewMode !== undefined
       )?.viewMode
-    // Republished tabs retain manual names; new split leaves inherit them. A terminal restarted
-    // for a saved tab has no earlier surface, so it falls back to the tab's saved name.
-    const customTitle = tabCustomTitle(
+    // Republished tabs retain manual names; new split leaves inherit them; a restart has neither.
+    const customTitle =
       (
         existingTab ??
         existing?.tabs.find(
@@ -105,11 +107,8 @@ export abstract class OrcaRuntimeWithPublishPtyBackedMobileSessionTerminal exten
             candidate.parentTabId === args.tabId &&
             candidate.customTitle !== undefined
         )
-      )?.customTitle,
-      this.getWorkspaceSessionForWorktree(worktreeId),
-      worktreeId,
-      args.tabId
-    )
+      )?.customTitle ??
+      (this.getPtyManualTitle(pty, false) || undefined)
     const tab: RuntimeMobileSessionTerminalTab = {
       type: 'terminal',
       id: `${args.tabId}::${args.leafId}`,
