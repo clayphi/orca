@@ -97,18 +97,21 @@ export abstract class OrcaRuntimeWithPublishPtyBackedMobileSessionTerminal exten
           candidate.parentTabId === args.tabId &&
           candidate.viewMode !== undefined
       )?.viewMode
-    // Republished tabs retain manual names; new split leaves inherit them; a restart has neither.
+    // Republished tabs retain manual names, null included; new split leaves inherit them.
+    const rowCustomTitle = (
+      existingTab ??
+      existing?.tabs.find(
+        (candidate): candidate is RuntimeMobileSessionTerminalTab =>
+          candidate.type === 'terminal' &&
+          candidate.parentTabId === args.tabId &&
+          candidate.customTitle !== undefined
+      )
+    )?.customTitle
+    // A restart has no earlier row, so the name comes from the saved tab.
     const customTitle =
-      (
-        existingTab ??
-        existing?.tabs.find(
-          (candidate): candidate is RuntimeMobileSessionTerminalTab =>
-            candidate.type === 'terminal' &&
-            candidate.parentTabId === args.tabId &&
-            candidate.customTitle !== undefined
-        )
-      )?.customTitle ??
-      (this.getPtyManualTitle(pty, false) || undefined)
+      rowCustomTitle !== undefined
+        ? rowCustomTitle
+        : this.getPtyManualTitle(pty, false) || undefined
     const tab: RuntimeMobileSessionTerminalTab = {
       type: 'terminal',
       id: `${args.tabId}::${args.leafId}`,

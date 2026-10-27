@@ -196,9 +196,11 @@ export abstract class OrcaRuntimeWithCreateRuntimeOwnedMobileSessionTerminal ext
       livePty.pty.ptyId,
       existingSurface?.parentLayout
     )
-    // A terminal restarted for a saved tab keeps the tab's saved name.
+    // A terminal restarted for a saved tab keeps the tab's saved name; a row's null stays cleared.
     const customTitle =
-      existingSurface?.customTitle ?? (this.getPtyManualTitle(livePty.pty, false) || undefined)
+      existingSurface?.customTitle !== undefined
+        ? existingSurface.customTitle
+        : this.getPtyManualTitle(livePty.pty, false) || undefined
     const tab: RuntimeMobileSessionTerminalTab = {
       type: 'terminal',
       id: `${parentTabId}::${leafId}`,
